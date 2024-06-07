@@ -110,6 +110,8 @@ void procdump(void);
 
 // channel.c
 void channelinit(void);
+int channel_create(void);
+int channel_put(int cd, int data);
 
 // swtch.S
 void swtch(struct context *, struct context *);

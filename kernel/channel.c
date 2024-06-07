@@ -9,37 +9,84 @@
 #include "file.h"
 
 #define channelSIZE 1
-#define NPchan 5
+#define NPchannel 5
+#define FREE 0
+#define NFREE 1
+#define READ 1
+#define NREAD 0
 
 struct channel
 {
-    char data[channelSIZE];
+    int data;
+    struct sleeplock data_lock;
+    int state;
+    int id;
+    struct spinlock id_lock;
+    int read_flage;
 
-    struct spinlock lock;
     uint nread;    // number of bytes read
     uint nwrite;   // number of bytes written
     int readopen;  // read fd is still open
     int writeopen; // write fd is still open
 
-    char buffer[1024];     // Example buffer size
-    int read_pos;          // Read position
-    int write_pos;         // Write position
-    struct spinlock lock2; // Lock for synchronizing access
-    int closed;            // Status to indicate if the channel is closed
+    char buffer[1024]; // Example buffer size
+    int read_pos;      // Read position
+    int write_pos;     // Write position
+    int closed;        // Status to indicate if the channel is closed
 };
 
-struct channel channels[NPchan];
+struct channel channels[NPchannel];
 
 // initialize the channels
 void channelinit(void)
 {
-    struct channel *chan;
-
-    for (chan = channels; chan < &channels[NPchan]; chan++)
+    struct channel *channel;
+    int counter = 0;
+    for (channel = channels; channel < &channels[NPchannel]; channel++)
     {
-        // chan->state =
-        // chan->kstack =
+        channel->state = FREE;
+        channel->id = counter;
+        initlock(&channel->id_lock, "channel_id");
+        initsleeplock(&channel->id_lock, "channel_data");
+        channel->read_flage = 0;
+
+        counter++;
     }
+}
+
+int channel_create(void)
+{
+    struct channel *channel;
+    for (channel = channels; channel < &channels[NPchannel]; channel++)
+    {
+        acquire(&channel->id_lock);
+        if (channel->state == FREE)
+        {
+            channel->state = NFREE;
+            release(&channel->id_lock);
+            return channel->id;
+        }
+    }
+    return -1;
+}
+
+int channel_put(int cd, int data)
+{
+    struct channel *channel;
+
+    // Check if the channel id is valid
+    if (cd < 0 || cd >= NPchannel)
+    {
+        return -1; // Invalid channel id
+    }
+
+    channel = &channels[cd];
+    acquiresleep(&channel->data_lock);
+    channel->data = data;
+    channel->read_flage = 0;
+    sleep(channel->read_flage, );
+    releasesleep(&channel->data_lock);
+    return 0;
 }
 
 // int channelalloc(struct file **f0, struct file **f1)
