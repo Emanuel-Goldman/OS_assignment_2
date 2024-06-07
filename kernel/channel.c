@@ -21,11 +21,11 @@ struct channel
     int readopen;  // read fd is still open
     int writeopen; // write fd is still open
 
-    char buffer[1024];    // Example buffer size
-    int read_pos;         // Read position
-    int write_pos;        // Write position
-    struct spinlock lock; // Lock for synchronizing access
-    int closed;           // Status to indicate if the channel is closed
+    char buffer[1024];     // Example buffer size
+    int read_pos;          // Read position
+    int write_pos;         // Write position
+    struct spinlock lock2; // Lock for synchronizing access
+    int closed;            // Status to indicate if the channel is closed
 };
 
 struct channel channels[NPchan];
