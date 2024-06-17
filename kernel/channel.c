@@ -41,7 +41,6 @@ void channelinit(void)
 
 int channel_create(void)
 {
-    int ans = -1;
     struct channel *channel;
     for (channel = channels; channel < &channels[NPchannel]; channel++)
     {
@@ -49,28 +48,13 @@ int channel_create(void)
         if (channel->state == FREE)
         {
             channel->state = NFREE;
-            ans = channel->id;
             acquiresleep(&channel->take_lock);
+            release(&channel->id_lock);
+            return channel->id;
         }
-        release(&channel->id_lock); // must be outside the if
-        if (ans != -1)              // found one
-        {
-            break;
-        }
+        release(&channel->id_lock);
     }
-    return ans;
-
-    // struct proc *p = myproc();
-    // for (int i = 0; i < NCHANNEL; i++) {
-    //     acquire(&channels[i].lock);
-    //     if (channels[i].owner == 0) {
-    //         channels[i].owner = p;
-    //         release(&channels[i].lock);
-    //         return i; // return the channel descriptor
-    //     }
-    //     release(&channels[i].lock);
-    // }
-    // return -1; // no available channel
+    return -1;
 }
 
 int channel_put(int cd, int data)
@@ -102,7 +86,7 @@ int channel_take(int cd, int *data)
 
     acquiresleep(&channel->take_lock);
     // copyout(p->pagetable, data, &channel->data, sizeof(channel->data));
-    //  memmove(&data, &channel->data, sizeof(channel->data));
+    memmove(&data, &channel->data, sizeof(channel->data));
     releasesleep(&channel->put_lock);
     return 0;
 }
