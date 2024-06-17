@@ -22,11 +22,10 @@ int main(int argc, char *argv[])
     }
     else
     {
-        //int *data = malloc(sizeof(int));
-        data = 4;
+        int *data = malloc(sizeof(int));
+        *data = 4;
         channel_take(cd, data);
-        printf("the data is: %d\n", &data);
-        printf("the data is: %d\n", *data);
+        printf("the data is: %d\n", data);
     }
 
     // if (fork() == 0)

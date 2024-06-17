@@ -105,7 +105,7 @@ sys_channel_put(void)
   int data;
   argint(0, &cd);
   argint(1, &data);
-  return channel_put(cd, data);
+  return channel_put(cd,data);
 }
 
 uint64
