@@ -108,16 +108,6 @@ sys_channel_put(void)
   return channel_put(cd,data);
 }
 
-// uint64
-// sys_channel_take(void)
-// {
-//   int cd;
-//   uint64 data_addr;
-//   argint(0, &cd);
-//   argaddr(1, &data_addr);
-//   copyout(myproc()->pagetable, data_addr, (char *)&data_addr, sizeof(data_addr));
-//   return channel_take(cd, (int *)data_addr);
-// }
 
 uint64
 sys_channel_take(void)

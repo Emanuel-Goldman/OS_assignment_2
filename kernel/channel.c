@@ -18,7 +18,7 @@ struct channel
     int data;
     int state;
     int id;
-    struct spinlock id_lock;
+    struct spinlock state_lock;
     struct sleeplock put_lock;
     struct sleeplock take_lock;
 };
@@ -33,7 +33,7 @@ void channelinit(void)
         struct channel *channel = &channels[i];
         channel->state = FREE;
         channel->id = i;
-        initlock(&channel->id_lock, "channel_id");
+        initlock(&channel->state_lock, "channel_state");
         initsleeplock(&channel->put_lock, "channel_put");
         initsleeplock(&channel->take_lock, "channel_take");
     }
@@ -44,15 +44,15 @@ int channel_create(void)
     struct channel *channel;
     for (channel = channels; channel < &channels[NPchannel]; channel++)
     {
-        acquire(&channel->id_lock);
+        acquire(&channel->state_lock);
         if (channel->state == FREE)
         {
             channel->state = NFREE;
             acquiresleep(&channel->take_lock);
-            release(&channel->id_lock);
+            release(&channel->state_lock);
             return channel->id;
         }
-        release(&channel->id_lock);
+        release(&channel->state_lock);
     }
     return -1;
 }
@@ -68,38 +68,12 @@ int channel_put(int cd, int data)
     struct channel *channel = &channels[cd];
 
     acquiresleep(&channel->put_lock); // now we can put the data without worring that another data will be overwritten + we are thw only one who can put data now
-    // memmove(&channel->data, &data, sizeof(data));
     channel->data = data;
     releasesleep(&channel->take_lock);
     return 0;
 }
 
-// int channel_take(int cd, int* data)
-// {
-//     printf("teke data : %d\n", data);
-
-//     // Check if the channel id is valid
-//     if (cd < 0 || cd >= NPchannel)
-//     {
-//         return -1;
-//     }
-
-//     struct channel *channel = &channels[cd];
-//     // struct proc *p = myproc();
-
-//     acquiresleep(&channel->take_lock);
-//     // copyout(p->pagetable, data, &channel->data, sizeof(channel->data));
-//     // memmove(&data, &channel->data, sizeof(channel->data));
-//     // copyout(p->pagetable, (uint64)data, (char *)&channel->data, sizeof(channel->data));
-//     data = channel->data;
-//     printf("channel data is : %d\n", channel->data);
-//     printf("take data: %d\n", data);
-//     releasesleep(&channel->put_lock);
-
-//     return 0;
-// }
-
-int channel_take(int cd, int* data)
+int channel_take(int cd, int *data)
 {
     // Check if the channel id is valid
     if (cd < 0 || cd >= NPchannel)
@@ -108,14 +82,12 @@ int channel_take(int cd, int* data)
     }
 
     struct channel *channel = &channels[cd];
-
+    //acquire(&channel->state_lock);
     acquiresleep(&channel->take_lock);
-
-    // Assign the value from channel->data to the location pointed to by data
+    if()
+    //release(&channel->state_lock);
     *data = channel->data;
-
     releasesleep(&channel->put_lock);
-
     return 0;
 }
 
@@ -129,22 +101,16 @@ int channel_destroy(int cd)
 
     struct channel *channel = &channels[cd];
 
-    // acquire(&channels[cd].lock);
-    // if (channels[cd].owner != myproc()) {
-    //     release(&channels[cd].lock);
-    //     return -1;
-    // }
-
     // init
+    acquire(&channel->state_lock);
     channel->state = FREE;
-    channel->id = cd;
-    initlock(&channel->id_lock, "channel_id");
-    initsleeplock(&channel->put_lock, "channel_put");
-    initsleeplock(&channel->take_lock, "channel_take");
-    acquiresleep(&channel->take_lock);
 
-    // wakeup(&channels[cd]); // wake up all processes waiting on this channel
-    // release(&channels[cd].lock);
+    releasesleep(&channel->put_lock); 
+
+    acquiresleep(&channel->take_lock);
+    release(&channel->state_lock);
+
+     wakeup(&channels[cd]); // wake up all processes waiting on this channel
 
     return 0;
 }
