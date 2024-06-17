@@ -28,9 +28,6 @@ struct channel channels[NPchannel];
 // initialize the channels
 void channelinit(void)
 {
-    // struct channel *channel;
-    //  int counter = 0;
-    //  for (channel = channels; channel < &channels[NPchannel]; channel++)
     for (int i = 0; i < NPchannel; i++)
     {
         struct channel *channel = &channels[i];
@@ -39,9 +36,6 @@ void channelinit(void)
         initlock(&channel->id_lock, "channel_id");
         initsleeplock(&channel->put_lock, "channel_put");
         initsleeplock(&channel->take_lock, "channel_take");
-        acquiresleep(&channel->take_lock);
-
-        // counter++;
     }
 }
 
@@ -56,6 +50,7 @@ int channel_create(void)
         {
             channel->state = NFREE;
             ans = channel->id;
+            acquiresleep(&channel->take_lock);
         }
         release(&channel->id_lock); // must be outside the if
         if (ans != -1)              // found one
