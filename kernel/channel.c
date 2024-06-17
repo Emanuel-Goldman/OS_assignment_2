@@ -59,7 +59,6 @@ int channel_create(void)
 
 int channel_put(int cd, int data)
 {
-    printf("put data: %d\n", data);
     // Check if the channel id is valid
     if (cd < 0 || cd >= NPchannel)
     {
@@ -71,10 +70,34 @@ int channel_put(int cd, int data)
     acquiresleep(&channel->put_lock); // now we can put the data without worring that another data will be overwritten + we are thw only one who can put data now
     // memmove(&channel->data, &data, sizeof(data));
     channel->data = data;
-    printf("put data: %d\n", data);
     releasesleep(&channel->take_lock);
     return 0;
 }
+
+// int channel_take(int cd, int* data)
+// {
+//     printf("teke data : %d\n", data);
+
+//     // Check if the channel id is valid
+//     if (cd < 0 || cd >= NPchannel)
+//     {
+//         return -1;
+//     }
+
+//     struct channel *channel = &channels[cd];
+//     // struct proc *p = myproc();
+
+//     acquiresleep(&channel->take_lock);
+//     // copyout(p->pagetable, data, &channel->data, sizeof(channel->data));
+//     // memmove(&data, &channel->data, sizeof(channel->data));
+//     // copyout(p->pagetable, (uint64)data, (char *)&channel->data, sizeof(channel->data));
+//     data = channel->data;
+//     printf("channel data is : %d\n", channel->data);
+//     printf("take data: %d\n", data);
+//     releasesleep(&channel->put_lock);
+
+//     return 0;
+// }
 
 int channel_take(int cd, int* data)
 {
@@ -85,13 +108,14 @@ int channel_take(int cd, int* data)
     }
 
     struct channel *channel = &channels[cd];
-    struct proc *p = myproc();
 
     acquiresleep(&channel->take_lock);
-    // copyout(p->pagetable, data, &channel->data, sizeof(channel->data));
-    // memmove(&data, &channel->data, sizeof(channel->data));
-    copyout(p->pagetable, (uint64)data, (char *)&channel->data, sizeof(channel->data));
+
+    // Assign the value from channel->data to the location pointed to by data
+    *data = channel->data;
+
     releasesleep(&channel->put_lock);
+
     return 0;
 }
 

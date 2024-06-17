@@ -108,14 +108,41 @@ sys_channel_put(void)
   return channel_put(cd,data);
 }
 
+// uint64
+// sys_channel_take(void)
+// {
+//   int cd;
+//   uint64 data_addr;
+//   argint(0, &cd);
+//   argaddr(1, &data_addr);
+//   copyout(myproc()->pagetable, data_addr, (char *)&data_addr, sizeof(data_addr));
+//   return channel_take(cd, (int *)data_addr);
+// }
+
 uint64
 sys_channel_take(void)
 {
-  int cd;
-  uint64 data_addr;
-  argint(0, &cd);
-  argaddr(1, &data_addr);
-  return channel_take(cd, (int *)data_addr);
+    int cd;
+    uint64 data_addr;
+    int data;
+
+    // Get the arguments from the user
+    argint(0, &cd);
+    argaddr(1, &data_addr);
+
+
+    // Call the channel_take function and check for errors
+    if (channel_take(cd, &data) < 0) {
+        return -1; // Error in taking data from the channel
+    }
+
+    // Copy the data from kernel space to user space
+    if (copyout(myproc()->pagetable, data_addr, (char *)&data, sizeof(data)) < 0) {
+        printf("Error in copying data to user space\n");
+        return -1; // Error in copying data to user space
+    }
+
+    return 0;
 }
 
 uint64
