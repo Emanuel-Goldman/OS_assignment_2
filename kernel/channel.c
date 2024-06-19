@@ -74,7 +74,7 @@ int channel_put(int cd, int data)
     {
 
         sleep(&channel->valid_put, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
-        if (&channel->state == FREE)                     // desroy has been called
+        if (channel->state == FREE)                     // desroy has been called
         {
             return -1;
         }
@@ -112,9 +112,12 @@ int channel_take(int cd, int *data)
     acquire(&channel->data_lock);
     while (channel->valid_take == 0)
     {
+        printf("we went to sleep\n");
         sleep(&channel->valid_take, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
-        if (&channel->state == FREE)                      // desroy has been called
+        printf("we woke up\n");
+        if (channel->state == FREE)                      // desroy has been called
         {
+            printf("the channel is free\n");
             return -1;
         }
     }
@@ -142,6 +145,7 @@ int channel_take(int cd, int *data)
 
 int channel_destroy(int cd)
 {
+    printf("we are in the destroy function\n");
     // Check if the channel id is valid
     if (cd < 0 || cd >= NPchannel)
     {
@@ -158,5 +162,6 @@ int channel_destroy(int cd)
     wakeup(&channels->valid_take);
 
     release(&channel->state_lock);
+    printf("we are out of the destroy function\n");
     return 0;
 }
