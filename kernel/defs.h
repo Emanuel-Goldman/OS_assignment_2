@@ -114,6 +114,7 @@ int channel_create(void);
 int channel_put(int cd, int data);
 int channel_take(int cd, int *data);
 int channel_destroy(int cd);
+int destroy_my_channels(int pid);
 
 // swtch.S
 void swtch(struct context *, struct context *);

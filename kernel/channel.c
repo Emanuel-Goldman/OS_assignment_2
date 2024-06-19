@@ -8,7 +8,6 @@
 #include "sleeplock.h"
 #include "file.h"
 
-#define channelSIZE 1
 #define NPchannel 5
 #define FREE 0
 #define NFREE 1
@@ -27,7 +26,6 @@ struct channel
 
 struct channel channels[NPchannel];
 
-// initialize the channels
 void channelinit(void)
 {
     for (int i = 0; i < NPchannel; i++)
@@ -114,12 +112,9 @@ int channel_take(int cd, int *data)
     acquire(&channel->data_lock);
     while (channel->valid_take == 0)
     {
-        printf("we went to sleep\n");
-        sleep(&channel->valid_take, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
-        printf("we woke up\n");
-        if (channel->state == FREE) // desroy has been called
+        sleep(&channel->valid_take, &channel->data_lock); // realse data_lock + wakes up when valid_put changes and take the key
+        if (channel->state == FREE)                       // desroy has been called
         {
-            printf("the channel is free\n");
             return -1;
         }
     }
@@ -147,7 +142,6 @@ int channel_take(int cd, int *data)
 
 int channel_destroy(int cd)
 {
-    printf("we are in the destroy function\n");
     // Check if the channel id is valid
     if (cd < 0 || cd >= NPchannel)
     {
@@ -164,7 +158,6 @@ int channel_destroy(int cd)
     wakeup(&channels->valid_take);
 
     release(&channel->state_lock);
-    printf("we are out of the destroy function\n");
     return 0;
 }
 
@@ -178,4 +171,5 @@ int destroy_my_channels(int pid)
             channel_destroy(pid);
         }
     }
+    return 0;
 }

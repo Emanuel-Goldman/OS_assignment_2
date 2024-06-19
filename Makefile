@@ -134,6 +134,7 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_test_channel\
+	$U/_primes\
 
 
 fs.img: mkfs/mkfs README $(UPROGS)
