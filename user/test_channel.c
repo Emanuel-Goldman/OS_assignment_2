@@ -42,7 +42,12 @@ int main(int argc, char *argv[])
             exit(1);
         }
         printf("take2:%d\n", data);
-        printf("take3:%d\n", data); // shouldnt be reached
+        if (channel_destroy(cd) < 0)
+        { 
+            printf("Failed to destroy channel\n");
+            exit(1);
+        }
+        
     }
 
     exit(0);

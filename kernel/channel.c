@@ -113,7 +113,7 @@ int channel_take(int cd, int *data)
     while (channel->valid_take == 0)
     {
         sleep(&channel->valid_take, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
-        if (&channel->state == FREE) // desroy has been called
+        if (&channel->state == FREE)                      // desroy has been called
         {
             return -1;
         }
@@ -152,14 +152,11 @@ int channel_destroy(int cd)
 
     // init
     acquire(&channel->state_lock);
+
     channel->state = FREE;
+    wakeup(&channels->valid_put);
+    wakeup(&channels->valid_take);
 
-    initlock(&channel->data_lock, "channel_data");
-    channel->valid_put = 1;
-    channel->valid_take = 0;
     release(&channel->state_lock);
-
-    wakeup(&channels[cd]); // wake up all processes waiting on this channel
-
     return 0;
 }
