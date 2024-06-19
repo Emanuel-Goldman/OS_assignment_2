@@ -52,6 +52,7 @@ int channel_create(void)
             channel->state = NFREE;
             channel->valid_put = 1;
             channel->valid_take = 0;
+            release(&channel->state_lock);
             return channel->id;
         }
         release(&channel->state_lock);
@@ -61,43 +62,34 @@ int channel_create(void)
 
 int channel_put(int cd, int data)
 {
-    printf("2\n");
     if (cd < 0 || cd >= NPchannel)
     {
         return -1;
     }
 
     struct channel *channel = &channels[cd];
-    printf("3\n");
+
     acquire(&channel->data_lock);
-    printf("4\n");
-    while (&channel->valid_put == 0)
+    while (channel->valid_put == 0)
     {
-        printf("5\n");
+
         sleep(&channel->valid_put, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
-        printf("6\n");
-        if (&channel->state == FREE) // desroy has been called
+        if (&channel->state == FREE)                     // desroy has been called
         {
-            printf("7\n");
             return -1;
         }
-        printf("8\n");
-        acquire(&channel->data_lock);
     }
-    printf("9\n");
-    // now we have the key and we are allowed to write
+
+    //  now we have the key and we are allowed to write
     acquire(&channel->state_lock);
-    printf("10\n");
     if (&channel->state == FREE) // desroy has been called
     {
-        printf("11\n");
         release(&channel->state_lock);
         release(&channel->data_lock);
         return -1;
     }
     else
     {
-        printf("12\n");
         channel->data = data;
         channel->valid_take = 1;
         channel->valid_put = 0;
@@ -110,22 +102,21 @@ int channel_put(int cd, int data)
 
 int channel_take(int cd, int *data)
 {
+
     if (cd < 0 || cd >= NPchannel)
     {
         return -1;
     }
 
     struct channel *channel = &channels[cd];
-
     acquire(&channel->data_lock);
-    while (&channel->valid_take == 0)
+    while (channel->valid_take == 0)
     {
         sleep(&channel->valid_take, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
-        if (&channel->state == FREE)                      // desroy has been called
+        if (&channel->state == FREE) // desroy has been called
         {
             return -1;
         }
-        acquire(&channel->data_lock);
     }
 
     // now we have the key and we are allowed to read
@@ -138,6 +129,7 @@ int channel_take(int cd, int *data)
     }
     else
     {
+
         *data = channel->data;
         channel->valid_take = 0;
         channel->valid_put = 1;
