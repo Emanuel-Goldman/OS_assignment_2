@@ -384,6 +384,7 @@ void exit(int status)
 
   acquire(&p->lock);
 
+  destroy_my_channels(myproc()->pid);
   p->xstate = status;
   p->state = ZOMBIE;
 
@@ -606,6 +607,7 @@ int kill(int pid)
     acquire(&p->lock);
     if (p->pid == pid)
     {
+      destroy_my_channels(pid);
       p->killed = 1;
       if (p->state == SLEEPING)
       {

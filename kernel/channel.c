@@ -22,6 +22,7 @@ struct channel
     struct spinlock data_lock;
     int valid_put;
     int valid_take;
+    int proc;
 };
 
 struct channel channels[NPchannel];
@@ -52,6 +53,7 @@ int channel_create(void)
             channel->state = NFREE;
             channel->valid_put = 1;
             channel->valid_take = 0;
+            channel->proc = myproc()->pid;
             release(&channel->state_lock);
             return channel->id;
         }
@@ -74,7 +76,7 @@ int channel_put(int cd, int data)
     {
 
         sleep(&channel->valid_put, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
-        if (channel->state == FREE)                     // desroy has been called
+        if (channel->state == FREE)                      // desroy has been called
         {
             return -1;
         }
@@ -115,7 +117,7 @@ int channel_take(int cd, int *data)
         printf("we went to sleep\n");
         sleep(&channel->valid_take, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
         printf("we woke up\n");
-        if (channel->state == FREE)                      // desroy has been called
+        if (channel->state == FREE) // desroy has been called
         {
             printf("the channel is free\n");
             return -1;
@@ -164,4 +166,16 @@ int channel_destroy(int cd)
     release(&channel->state_lock);
     printf("we are out of the destroy function\n");
     return 0;
+}
+
+int destroy_my_channels(int pid)
+{
+    for (int i = 0; i < NPchannel; i++)
+    {
+        struct channel *channel = &channels[i];
+        if (pid == channel->proc)
+        {
+            channel_destroy(pid);
+        }
+    }
 }
