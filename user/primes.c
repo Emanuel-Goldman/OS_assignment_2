@@ -2,17 +2,14 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-#define MAX_PRIMES 100
+#define MAX_PRIMES 3
 #define DEFAULT_CHECKERS 3
-
-// Channel indices
-#define CHANNEL_GEN_TO_CHECK 0
-#define CHANNEL_CHECK_TO_PRINT 1
+// #define CHANNEL_GEN_TO_CHECK 0
+// #define CHANNEL_CHECK_TO_PRINT 1
 
 void generator(int checkers, int gen_to_check);
 void checker(int id, int gen_to_check, int check_to_print);
 void printer(int check_to_print);
-
 int is_prime(int n);
 
 int main(int argc, char *argv[])
@@ -33,14 +30,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    // Fork generator process
-    if (fork() == 0)
-    {
-        generator(num_checkers, gen_to_check);
-        exit(0);
-    }
-
-    // Fork checker processes
+    // checker processes
     for (int i = 0; i < num_checkers; i++)
     {
         if (fork() == 0)
@@ -50,33 +40,30 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Fork printer process
+    // printer process
     if (fork() == 0)
     {
         printer(check_to_print);
         exit(0);
     }
+    else // generator process - the father
+    {
+        generator(num_checkers, gen_to_check);
+    }
 
     // Wait for all child processes to exit
-    for (int i = 0; i < num_checkers + 2; i++)
+    for (int i = 0; i < num_checkers + 1; i++)
     {
         wait(0);
     }
 
     // Prompt user to restart the system
-    while (1)
+    printf("Do you want to start the system again? (y/n): ");
+    char buf[2];
+    gets(buf, sizeof(buf));
+    if (buf[0] == 'y')
     {
-        printf("Do you want to restart the system? (y/n): ");
-        char buf[2];
-        gets(buf, sizeof(buf));
-        if (buf[0] == 'y')
-        {
-            main(argc, argv); // Restart the system
-        }
-        else
-        {
-            break;
-        }
+        main(argc, argv); // Restart the system
     }
 
     exit(0);
@@ -93,17 +80,18 @@ void generator(int checkers, int gen_to_check)
         }
         num++;
     }
-    printf("Generator (PID %d): Channel closed, exiting\n", getpid());
+    printf("Channel 1 closed, Generator exiting\n");
 }
 
-void checker(int id, int gen_to_check, int check_to_print)
+void checker(int i, int gen_to_check, int check_to_print)
 {
     int num;
     while (1)
     {
         if (channel_take(gen_to_check, &num) < 0)
         {
-            break;
+            printf("failed to take a new number to check\n");
+            exit(1);
         }
         if (is_prime(num))
         {
@@ -113,7 +101,8 @@ void checker(int id, int gen_to_check, int check_to_print)
             }
         }
     }
-    printf("Checker %d (PID %d): Channel closed, exiting\n", id, getpid());
+    printf("Channel 2 closed, Checker #%d exiting\n", i);
+    channel_destroy(gen_to_check);
 }
 
 void printer(int check_to_print)
@@ -124,22 +113,20 @@ void printer(int check_to_print)
     {
         if (channel_take(check_to_print, &num) < 0)
         {
-            break;
+            printf("failed to take a new number to print\n");
+            exit(1);
         }
-        printf("Prime %d: %d\n", count + 1, num);
         count++;
+        printf("Prime %d: %d\n", count, num);
     }
-    printf("Printer (PID %d): Found 100 primes, shutting down\n", getpid());
+    printf("found 100 primes, shutting down...\n");
 
     // Destroy channels to signal other processes to exit
     channel_destroy(check_to_print);
-    channel_destroy(CHANNEL_GEN_TO_CHECK);
 }
 
 int is_prime(int n)
 {
-    if (n <= 1)
-        return 0;
     for (int i = 2; i * i <= n; i++)
     {
         if (n % i == 0)

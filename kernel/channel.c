@@ -72,19 +72,19 @@ int channel_put(int cd, int data)
     acquire(&channel->data_lock);
     while (channel->valid_put == 0)
     {
-
-        sleep(&channel->valid_put, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
-        if (channel->state == FREE)                      // desroy has been called
+        if (channel->state == FREE) // desroy has been called
         {
+            release(&channel->data_lock);
             return -1;
         }
+        sleep(&channel->valid_put, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
     }
 
     //  now we have the key and we are allowed to write
-    acquire(&channel->state_lock);
-    if (&channel->state == FREE) // desroy has been called
+    // acquire(&channel->state_lock);
+    if (channel->state == FREE) // desroy has been called
     {
-        release(&channel->state_lock);
+        // release(&channel->state_lock);
         release(&channel->data_lock);
         return -1;
     }
@@ -93,7 +93,7 @@ int channel_put(int cd, int data)
         channel->data = data;
         channel->valid_take = 1;
         channel->valid_put = 0;
-        release(&channel->state_lock);
+        // release(&channel->state_lock);
         release(&channel->data_lock);
         wakeup(&channel->valid_take);
         return 0;
@@ -112,18 +112,19 @@ int channel_take(int cd, int *data)
     acquire(&channel->data_lock);
     while (channel->valid_take == 0)
     {
-        sleep(&channel->valid_take, &channel->data_lock); // realse data_lock + wakes up when valid_put changes and take the key
-        if (channel->state == FREE)                       // desroy has been called
+        if (channel->state == FREE) // desroy has been called
         {
+            release(&channel->data_lock);
             return -1;
         }
+        sleep(&channel->valid_take, &channel->data_lock); // realse data_lock + wakes up when valid_put changes and take the key
     }
 
     // now we have the key and we are allowed to read
-    acquire(&channel->state_lock);
-    if (&channel->state == FREE) // desroy has been called
+    // acquire(&channel->state_lock);
+    if (channel->state == FREE) // desroy has been called
     {
-        release(&channel->state_lock);
+        // release(&channel->state_lock);
         release(&channel->data_lock);
         return -1;
     }
@@ -133,7 +134,7 @@ int channel_take(int cd, int *data)
         *data = channel->data;
         channel->valid_take = 0;
         channel->valid_put = 1;
-        release(&channel->state_lock);
+        // release(&channel->state_lock);
         release(&channel->data_lock);
         wakeup(&channel->valid_put);
         return 0;
