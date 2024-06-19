@@ -19,8 +19,9 @@ struct channel
     int state;
     int id;
     struct spinlock state_lock;
-    struct sleeplock put_lock;
-    struct sleeplock take_lock;
+    struct spinlock data_lock;
+    int valid_put;
+    int valid_take;
 };
 
 struct channel channels[NPchannel];
@@ -34,8 +35,9 @@ void channelinit(void)
         channel->state = FREE;
         channel->id = i;
         initlock(&channel->state_lock, "channel_state");
-        initsleeplock(&channel->put_lock, "channel_put");
-        initsleeplock(&channel->take_lock, "channel_take");
+        initlock(&channel->data_lock, "channel_data");
+        channel->valid_put = 1;
+        channel->valid_take = 0;
     }
 }
 
@@ -48,8 +50,8 @@ int channel_create(void)
         if (channel->state == FREE)
         {
             channel->state = NFREE;
-            acquiresleep(&channel->take_lock);
-            release(&channel->state_lock);
+            channel->valid_put = 1;
+            channel->valid_take = 0;
             return channel->id;
         }
         release(&channel->state_lock);
@@ -59,36 +61,91 @@ int channel_create(void)
 
 int channel_put(int cd, int data)
 {
-    // Check if the channel id is valid
+    printf("2\n");
     if (cd < 0 || cd >= NPchannel)
     {
         return -1;
     }
 
     struct channel *channel = &channels[cd];
-
-    acquiresleep(&channel->put_lock); // now we can put the data without worring that another data will be overwritten + we are thw only one who can put data now
-    channel->data = data;
-    releasesleep(&channel->take_lock);
-    return 0;
+    printf("3\n");
+    acquire(&channel->data_lock);
+    printf("4\n");
+    while (&channel->valid_put == 0)
+    {
+        printf("5\n");
+        sleep(&channel->valid_put, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
+        printf("6\n");
+        if (&channel->state == FREE) // desroy has been called
+        {
+            printf("7\n");
+            return -1;
+        }
+        printf("8\n");
+        acquire(&channel->data_lock);
+    }
+    printf("9\n");
+    // now we have the key and we are allowed to write
+    acquire(&channel->state_lock);
+    printf("10\n");
+    if (&channel->state == FREE) // desroy has been called
+    {
+        printf("11\n");
+        release(&channel->state_lock);
+        release(&channel->data_lock);
+        return -1;
+    }
+    else
+    {
+        printf("12\n");
+        channel->data = data;
+        channel->valid_take = 1;
+        channel->valid_put = 0;
+        release(&channel->state_lock);
+        release(&channel->data_lock);
+        wakeup(&channel->valid_take);
+        return 0;
+    }
 }
 
 int channel_take(int cd, int *data)
 {
-    // Check if the channel id is valid
     if (cd < 0 || cd >= NPchannel)
     {
         return -1;
     }
 
     struct channel *channel = &channels[cd];
-    //acquire(&channel->state_lock);
-    acquiresleep(&channel->take_lock);
-    if()
-    //release(&channel->state_lock);
-    *data = channel->data;
-    releasesleep(&channel->put_lock);
-    return 0;
+
+    acquire(&channel->data_lock);
+    while (&channel->valid_take == 0)
+    {
+        sleep(&channel->valid_take, &channel->data_lock); // wakes up when valid_put changes and realse data_lock
+        if (&channel->state == FREE)                      // desroy has been called
+        {
+            return -1;
+        }
+        acquire(&channel->data_lock);
+    }
+
+    // now we have the key and we are allowed to read
+    acquire(&channel->state_lock);
+    if (&channel->state == FREE) // desroy has been called
+    {
+        release(&channel->state_lock);
+        release(&channel->data_lock);
+        return -1;
+    }
+    else
+    {
+        *data = channel->data;
+        channel->valid_take = 0;
+        channel->valid_put = 1;
+        release(&channel->state_lock);
+        release(&channel->data_lock);
+        wakeup(&channel->valid_put);
+        return 0;
+    }
 }
 
 int channel_destroy(int cd)
@@ -105,12 +162,12 @@ int channel_destroy(int cd)
     acquire(&channel->state_lock);
     channel->state = FREE;
 
-    releasesleep(&channel->put_lock); 
-
-    acquiresleep(&channel->take_lock);
+    initlock(&channel->data_lock, "channel_data");
+    channel->valid_put = 1;
+    channel->valid_take = 0;
     release(&channel->state_lock);
 
-     wakeup(&channels[cd]); // wake up all processes waiting on this channel
+    wakeup(&channels[cd]); // wake up all processes waiting on this channel
 
     return 0;
 }
