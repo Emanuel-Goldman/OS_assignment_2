@@ -2,7 +2,7 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-#define MAX_PRIMES 100
+#define MAX_PRIMES 3
 #define DEFAULT_CHECKERS 3
 
 void generator(int checkers, int gen_to_check);
@@ -95,6 +95,7 @@ void checker(int i, int gen_to_check, int check_to_print)
         {
             if (channel_put(check_to_print, num) < 0)
             {
+                printf("Channel 2 closed - detection\n");
                 break;
             }
         }
@@ -121,6 +122,7 @@ void printer(int check_to_print)
 
     // Destroy channels to signal other processes to exit
     channel_destroy(check_to_print);
+    printf("end of printer\n");
 }
 
 int is_prime(int n)
