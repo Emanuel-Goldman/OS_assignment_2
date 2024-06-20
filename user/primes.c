@@ -2,10 +2,8 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-#define MAX_PRIMES 3
+#define MAX_PRIMES 100
 #define DEFAULT_CHECKERS 3
-// #define CHANNEL_GEN_TO_CHECK 0
-// #define CHANNEL_CHECK_TO_PRINT 1
 
 void generator(int checkers, int gen_to_check);
 void checker(int id, int gen_to_check, int check_to_print);
