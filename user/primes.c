@@ -2,7 +2,7 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-#define MAX_PRIMES 3
+#define MAX_PRIMES 100
 #define DEFAULT_CHECKERS 3
 
 void generator(int checkers, int gen_to_check);
@@ -55,10 +55,10 @@ int main(int argc, char *argv[])
         wait(0);
     }
 
-    // Prompt user to restart the system
     printf("Do you want to start the system again? (y/n): ");
     char buf[2];
     gets(buf, sizeof(buf));
+
     if (buf[0] == 'y')
     {
         main(argc, argv); // Restart the system
@@ -78,7 +78,8 @@ void generator(int checkers, int gen_to_check)
         }
         num++;
     }
-    printf("Channel 1 closed, Generator exiting\n");
+    sleep(10 * checkers + 10);
+    printf("[PID %d] Generator exiting\n", getpid());
 }
 
 void checker(int i, int gen_to_check, int check_to_print)
@@ -95,12 +96,12 @@ void checker(int i, int gen_to_check, int check_to_print)
         {
             if (channel_put(check_to_print, num) < 0)
             {
-                printf("Channel 2 closed - detection\n");
                 break;
             }
         }
     }
-    printf("Channel 2 closed, Checker #%d exiting\n", i);
+    sleep(i * 10);
+    printf("[PID %d] Checker %d exiting\n", getpid(), i);
     channel_destroy(gen_to_check);
 }
 
@@ -119,10 +120,10 @@ void printer(int check_to_print)
         printf("Prime %d: %d\n", count, num);
     }
     printf("found 100 primes, shutting down...\n");
+    printf("[PID %d] Printer exiting\n", getpid());
 
     // Destroy channels to signal other processes to exit
     channel_destroy(check_to_print);
-    printf("end of printer\n");
 }
 
 int is_prime(int n)
