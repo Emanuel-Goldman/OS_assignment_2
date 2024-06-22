@@ -18,53 +18,55 @@ int main(int argc, char *argv[])
         num_checkers = atoi(argv[1]);
     }
 
-    // Create channels
-    int gen_to_check = channel_create();
-    int check_to_print = channel_create();
-
-    if (gen_to_check < 0 || check_to_print < 0)
+    while (1)
     {
-        printf("Failed to create channels\n");
-        exit(1);
-    }
+        // Create channels
+        int gen_to_check = channel_create();
+        int check_to_print = channel_create();
 
-    // checker processes
-    for (int i = 0; i < num_checkers; i++)
-    {
+        if (gen_to_check < 0 || check_to_print < 0)
+        {
+            printf("Failed to create channels\n");
+            exit(1);
+        }
+
+        // checker processes
+        for (int i = 0; i < num_checkers; i++)
+        {
+            if (fork() == 0)
+            {
+                checker(i, gen_to_check, check_to_print);
+                exit(0);
+            }
+        }
+
+        // printer process
         if (fork() == 0)
         {
-            checker(i, gen_to_check, check_to_print);
+            printer(check_to_print);
             exit(0);
         }
-    }
+        else // generator process - the father
+        {
+            generator(num_checkers, gen_to_check);
+        }
 
-    // printer process
-    if (fork() == 0)
-    {
-        printer(check_to_print);
-        exit(0);
-    }
-    else // generator process - the father
-    {
-        generator(num_checkers, gen_to_check);
-    }
+        // Wait for all child processes to exit
+        for (int i = 0; i < num_checkers + 1; i++)
+        {
+            wait(0);
+        }
 
-    // Wait for all child processes to exit
-    for (int i = 0; i < num_checkers + 1; i++)
-    {
-        wait(0);
+        printf("Do you want to start the system again? (y/n): ");
+        char buf[3];
+        gets(buf, sizeof(buf));
+
+        if (buf[0] != 'y')
+        {
+            break; // Exit the loop if the user does not want to restart
+        }
     }
-
-    printf("Do you want to start the system again? (y/n): ");
-    char buf[2];
-    gets(buf, sizeof(buf));
-
-    if (buf[0] == 'y')
-    {
-        main(argc, argv); // Restart the system
-    }
-
-    exit(0);
+    return 0;
 }
 
 void generator(int checkers, int gen_to_check)
